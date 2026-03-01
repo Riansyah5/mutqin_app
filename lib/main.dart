@@ -25,19 +25,12 @@ class MutqinApp extends StatelessWidget {
       title: 'Mutqin',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA), // Off-white yang elegan
-        fontFamily: 'Quicksand', // Font yang modern dan mudah dibaca
+        scaffoldBackgroundColor: const Color(0xFFFDFDFD), // Clean White
+        fontFamily: 'Poppins',
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0A4D68), // Deep Navy / Emerald
-          primary: const Color(0xFF0A4D68),
-          secondary: const Color(0xFFD4AF37), // Metallic Gold
-        ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: false,
-          iconTheme: IconThemeData(color: Color(0xFF0A4D68)),
+          seedColor: const Color(0xFF12372A), // Aesthetic Forest Green
+          primary: const Color(0xFF12372A),
+          secondary: const Color(0xFFC5A880), // Muted Gold / Sand
         ),
       ),
       home: const SplashScreen(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
-import 'home_screen.dart';
+// import 'home_screen.dart';
+import 'main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,11 +32,11 @@ class _SplashScreenState extends State<SplashScreen> {
       // Beri sedikit jeda agar transisi lebih halus (opsional)
       await Future.delayed(const Duration(seconds: 1));
 
-      // 2. Pindah ke HomeScreen dan hapus SplashScreen dari tumpukan navigasi
+      // 2. Pindah ke MainScreen (bukan HomeScreen lagi)
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       }
     } catch (e) {

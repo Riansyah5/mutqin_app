@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../database/database_helper.dart';
 import '../models/surah_model.dart';
 import 'surah_detail_screen.dart';
@@ -58,7 +59,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -109,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.pie_chart_rounded, color: Colors.white70, size: 20),
+                      Icon(LucideIcons.barChart2, color: Colors.white70, size: 20),
                       SizedBox(width: 8),
                       Text('Progres Hafalan', style: TextStyle(color: Colors.white70, fontSize: 14)),
                     ],
@@ -205,18 +205,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 textAlign: TextAlign.right,
               ),
               onTap: () async {
-                // Menunggu user kembali dari layar Detail
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => SurahDetailScreen(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => SurahDetailScreen(
                       surahId: surah.id,
                       surahName: surah.namaLatin,
                       surahArab: surah.namaArab,
                     ),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      // Animasi mulus: Fade In + Slide tipis dari bawah
+                      var begin = const Offset(0.0, 0.05);
+                      var end = Offset.zero;
+                      var curve = Curves.easeOutQuart;
+
+                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+                        CurvedAnimation(parent: animation, curve: curve),
+                      );
+
+                      return SlideTransition(
+                        position: animation.drive(tween),
+                        child: FadeTransition(
+                          opacity: fadeAnimation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    transitionDuration: const Duration(milliseconds: 400),
                   ),
                 );
-                // Refresh layar Home agar persentase terbaru muncul
                 _refreshData();
               },
             );
@@ -248,21 +266,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF0A4D68),
-      unselectedItemColor: Colors.grey.withOpacity(0.6),
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      elevation: 20,
-      type: BottomNavigationBarType.fixed,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.menu_book_rounded), label: 'Mushaf'),
-        BottomNavigationBarItem(icon: Icon(Icons.pie_chart_rounded), label: 'Hafalan'),
-        BottomNavigationBarItem(icon: Icon(Icons.bookmark_rounded), label: 'Markah'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profil'),
-      ],
-    );
-  }
+  // Widget _buildBottomNav() {
+  //   return BottomNavigationBar(
+  //     backgroundColor: Colors.white,
+  //     selectedItemColor: const Color(0xFF0A4D68),
+  //     unselectedItemColor: Colors.grey.withOpacity(0.6),
+  //     showSelectedLabels: true,
+  //     showUnselectedLabels: true,
+  //     elevation: 20,
+  //     type: BottomNavigationBarType.fixed,
+  //     items: const [
+  //       BottomNavigationBarItem(icon: Icon(Icons.menu_book_rounded), label: 'Mushaf'),
+  //       BottomNavigationBarItem(icon: Icon(Icons.pie_chart_rounded), label: 'Hafalan'),
+  //       BottomNavigationBarItem(icon: Icon(Icons.bookmark_rounded), label: 'Markah'),
+  //       BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profil'),
+  //     ],
+  //   );
+  // }
 }
