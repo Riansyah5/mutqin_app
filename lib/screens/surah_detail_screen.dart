@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/ayah_model.dart';
+import '../services/audio_manager.dart'; // <--- Tambahkan baris ini
 
 class SurahDetailScreen extends StatefulWidget {
   final int surahId;
@@ -207,8 +208,32 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.play_circle_outline, color: Color(0xFF088395)),
-                    onPressed: () {
-                      // TODO: Putar audio murottal
+                    onPressed: () async {
+                      // Menampilkan pesan bahwa audio sedang diproses
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Memuat murottal...'),
+                          duration: Duration(milliseconds: 1000),
+                        ),
+                      );
+
+                      try {
+                        // Memanggil AudioManager
+                        await AudioManager.instance.playAyahAudio(
+                          widget.surahId, 
+                          ayat.nomorAyat
+                        );
+                      } catch (e) {
+                        // Tampilkan error jika gagal download/putar
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Gagal memutar audio. Cek koneksi internet Anda.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
                     },
                   ),
                   IconButton(
