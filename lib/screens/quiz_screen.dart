@@ -215,122 +215,137 @@ class _QuizScreenState extends State<QuizScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // --- HEADER SOALAN & SKOR ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF12372A).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(LucideIcons.bookOpen, size: 16, color: Color(0xFF12372A)),
-                      const SizedBox(width: 8),
-                      Text(
-                        _quizData!['surah_name'],
-                        style: const TextStyle(color: Color(0xFF12372A), fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('Pertanyaan $_questionCount', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-                    Text('Skor: $_score', style: const TextStyle(color: Color(0xFFC5A880), fontWeight: FontWeight.bold, fontSize: 16)),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // --- PERTANYAAN ---
-            const Text('Lanjutkan ayat berikut:', style: TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
-                ],
-                border: Border.all(color: const Color(0xFF12372A).withOpacity(0.1)),
-              ),
-              child: Center(
-                child: Text(
-                  _quizData!['question_ayah'],
-                  textAlign: TextAlign.center,
-                  textDirection: TextDirection.rtl,
-                  style: const TextStyle(fontFamily: 'KFGQPC', fontSize: 32, color: Color(0xFF12372A), height: 1.8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
-
-            // --- PILIHAN JAWAPAN ---
+            // --- AREA SCROLLABLE (SOAL & JAWAPAN) ---
+            // Dibungkus dengan Expanded dan SingleChildScrollView agar boleh digulir
             Expanded(
-              child: ListView.separated(
-                itemCount: options.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 16),
-                itemBuilder: (context, index) {
-                  final option = options[index];
-                  final isSelected = _selectedIndex == index;
-                  
-                  Color borderColor = isSelected ? const Color(0xFFC5A880) : Colors.grey.withOpacity(0.2);
-                  Color bgColor = isSelected ? const Color(0xFFC5A880).withOpacity(0.1) : Colors.white;
-                  Widget? trailingIcon;
-
-                  if (_isAnswerChecked) {
-                    if (option['isCorrect']) {
-                      borderColor = Colors.green;
-                      bgColor = Colors.green.withOpacity(0.1);
-                      trailingIcon = const Icon(LucideIcons.checkCircle2, color: Colors.green);
-                    } else if (isSelected && !option['isCorrect']) {
-                      borderColor = Colors.red;
-                      bgColor = Colors.red.withOpacity(0.1);
-                      trailingIcon = const Icon(LucideIcons.xCircle, color: Colors.red);
-                    }
-                  }
-
-                  return GestureDetector(
-                    onTap: _isAnswerChecked ? null : () {
-                      setState(() {
-                        _selectedIndex = index;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: borderColor, width: isSelected || (_isAnswerChecked && option['isCorrect']) ? 2 : 1),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          if (trailingIcon != null) trailingIcon else const SizedBox(width: 24),
-                          Expanded(
-                            child: Text(
-                              option['text'],
-                              textAlign: TextAlign.right,
-                              textDirection: TextDirection.rtl,
-                              style: const TextStyle(fontFamily: 'Amiri', fontSize: 24, color: Color(0xFF2D2D2D)),
-                            ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(), // Efek pantulan yang elegan
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // --- HEADER SOALAN & SKOR ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF12372A).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
                           ),
+                          child: Row(
+                            children: [
+                              const Icon(LucideIcons.bookOpen, size: 16, color: Color(0xFF12372A)),
+                              const SizedBox(width: 8),
+                              Text(
+                                _quizData!['surah_name'],
+                                style: const TextStyle(color: Color(0xFF12372A), fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('Soalan $_questionCount', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                            Text('Skor: $_score', style: const TextStyle(color: Color(0xFFC5A880), fontWeight: FontWeight.bold, fontSize: 16)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // --- PERTANYAAN ---
+                    const Text('Lanjutkan ayat berikut:', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(24), // Padding disesuaikan sedikit agar lebih lega
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
                         ],
+                        border: Border.all(color: const Color(0xFF12372A).withOpacity(0.1)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _quizData!['question_ayah'],
+                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                          // Ukuran font diturunkan sedikit (dari 32 ke 28) agar lebih aman untuk ayat panjang
+                          style: const TextStyle(fontFamily: 'KFGQPC', fontSize: 28, color: Color(0xFF12372A), height: 1.8),
+                        ),
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 32),
+
+                    // --- PILIHAN JAWAPAN ---
+                    // Tidak lagi menggunakan Expanded di sini, tapi shrinkWrap: true
+                    ListView.separated(
+                      shrinkWrap: true, // Memaksa ListView menyesuaikan tinggi dengan isinya
+                      physics: const NeverScrollableScrollPhysics(), // Mematikan scroll internal ListView
+                      itemCount: options.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final option = options[index];
+                        final isSelected = _selectedIndex == index;
+                        
+                        Color borderColor = isSelected ? const Color(0xFFC5A880) : Colors.grey.withOpacity(0.2);
+                        Color bgColor = isSelected ? const Color(0xFFC5A880).withOpacity(0.1) : Colors.white;
+                        Widget? trailingIcon;
+
+                        if (_isAnswerChecked) {
+                          if (option['isCorrect']) {
+                            borderColor = Colors.green;
+                            bgColor = Colors.green.withOpacity(0.1);
+                            trailingIcon = const Icon(LucideIcons.checkCircle2, color: Colors.green);
+                          } else if (isSelected && !option['isCorrect']) {
+                            borderColor = Colors.red;
+                            bgColor = Colors.red.withOpacity(0.1);
+                            trailingIcon = const Icon(LucideIcons.xCircle, color: Colors.red);
+                          }
+                        }
+
+                        return GestureDetector(
+                          onTap: _isAnswerChecked ? null : () {
+                            setState(() {
+                              _selectedIndex = index;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                            decoration: BoxDecoration(
+                              color: bgColor,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: borderColor, width: isSelected || (_isAnswerChecked && option['isCorrect']) ? 2 : 1),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (trailingIcon != null) trailingIcon else const SizedBox(width: 24),
+                                Expanded(
+                                  child: Text(
+                                    option['text'],
+                                    textAlign: TextAlign.right,
+                                    textDirection: TextDirection.rtl,
+                                    style: const TextStyle(fontFamily: 'KFGQPC', fontSize: 24, color: Color(0xFF2D2D2D)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24), // Jarak lega sebelum tombol
+                  ],
+                ),
               ),
             ),
 
-            // --- BUTANG TINDAKAN ---
+            // --- BUTANG TINDAKAN (Terkunci di bawah) ---
             SizedBox(
               width: double.infinity,
               height: 56,
