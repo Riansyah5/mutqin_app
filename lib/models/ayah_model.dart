@@ -2,17 +2,21 @@ class Ayah {
   final int id;
   final int surahId;
   final int nomorAyat;
+  final int juz;
   final String teksArab;
+  final String teksLatin;
   final String terjemahan;
-  final int statusHafalan; // 0: Belum, 1: Proses, 2: Lancar
+  final int statusHafalan;
 
   Ayah({
     required this.id,
     required this.surahId,
     required this.nomorAyat,
+    required this.juz,
     required this.teksArab,
+    required this.teksLatin,
     required this.terjemahan,
-    this.statusHafalan = 0, // Default belum dihafal
+    this.statusHafalan = 0,
   });
 
   factory Ayah.fromMap(Map<String, dynamic> map) {
@@ -20,7 +24,9 @@ class Ayah {
       id: map['id'],
       surahId: map['surah_id'],
       nomorAyat: map['nomor_ayat'],
+      juz: map['juz'],
       teksArab: map['teks_arab'],
+      teksLatin: map['teks_latin'],
       terjemahan: map['terjemahan'],
       statusHafalan: map['status_hafalan'] ?? 0,
     );
@@ -31,7 +37,9 @@ class Ayah {
       'id': id,
       'surah_id': surahId,
       'nomor_ayat': nomorAyat,
+      'juz': juz,
       'teks_arab': teksArab,
+      'teks_latin': teksLatin,
       'terjemahan': terjemahan,
       'status_hafalan': statusHafalan,
     };
