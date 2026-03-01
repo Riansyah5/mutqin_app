@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import '../database/database_helper.dart';
 import '../models/ayah_model.dart';
-import '../services/audio_manager.dart'; // <--- Tambahkan baris ini
+import '../services/audio_manager.dart'; //
 
 class SurahDetailScreen extends StatefulWidget {
   final int surahId;
@@ -21,6 +22,10 @@ class SurahDetailScreen extends StatefulWidget {
 
 class _SurahDetailScreenState extends State<SurahDetailScreen> {
   late Future<List<Ayah>> _ayahsFuture;
+  
+  int? _playingAyahNumber; // Menyimpan nomor ayat yang sedang diputar
+  LoopMode _currentLoopMode = LoopMode.off; // Menyimpan status looping saat ini
+
 
   @override
   void initState() {
@@ -62,25 +67,122 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.surahName,
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0A4D68)),
-        ),
+        title: Text(widget.surahName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0A4D68))),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Color(0xFF0A4D68)),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Column(
         children: [
           _buildSurahHeader(),
-          Expanded(
-            child: _buildAyatList(),
-          ),
+          Expanded(child: _buildAyatList()),
         ],
+      ),
+      // MUNCULKAN MINI PLAYER JIKA ADA AYAT YANG DIPUTAR
+      bottomNavigationBar: _playingAyahNumber != null ? _buildMiniAudioPlayer() : null,
+    );
+  }
+
+  // --- WIDGET MINI PLAYER ---
+  Widget _buildMiniAudioPlayer() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A4D68), // Warna Navy premium
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, -5)),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Info Ayat yang diputar
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sedang diputar',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                Text(
+                  '${widget.surahName} - Ayat $_playingAyahNumber',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            
+            // Kontrol Audio (Loop, Play/Pause, Stop)
+            Row(
+              children: [
+                // Tombol Looping
+                IconButton(
+                  icon: Icon(
+                    _currentLoopMode == LoopMode.one ? Icons.repeat_one : Icons.repeat,
+                    color: _currentLoopMode == LoopMode.one ? const Color(0xFFD4AF37) : Colors.white70,
+                  ),
+                  onPressed: () async {
+                    // Toggle looping mode
+                    setState(() {
+                      _currentLoopMode = _currentLoopMode == LoopMode.off ? LoopMode.one : LoopMode.off;
+                    });
+                    await AudioManager.instance.audioPlayer.setLoopMode(_currentLoopMode);
+                    
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(_currentLoopMode == LoopMode.one ? 'Pengulangan Ayat Diaktifkan' : 'Pengulangan Dimatikan'),
+                        duration: const Duration(milliseconds: 1000),
+                      ));
+                    }
+                  },
+                ),
+                
+                // StreamBuilder untuk tombol Play/Pause dinamis
+                StreamBuilder<PlayerState>(
+                  stream: AudioManager.instance.audioPlayer.playerStateStream,
+                  builder: (context, snapshot) {
+                    final playerState = snapshot.data;
+                    final processingState = playerState?.processingState;
+                    final playing = playerState?.playing;
+
+                    if (processingState == ProcessingState.loading || processingState == ProcessingState.buffering) {
+                      return const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Color(0xFFD4AF37), strokeWidth: 3)),
+                      );
+                    } else if (playing != true) {
+                      return IconButton(
+                        icon: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
+                        onPressed: AudioManager.instance.resumeAudio,
+                      );
+                    } else if (processingState != ProcessingState.completed) {
+                      return IconButton(
+                        icon: const Icon(Icons.pause, color: Colors.white, size: 32),
+                        onPressed: AudioManager.instance.pauseAudio,
+                      );
+                    } else {
+                      // Jika selesai (dan tidak di-loop), kembalikan ke ikon play
+                      return IconButton(
+                        icon: const Icon(Icons.replay, color: Colors.white, size: 32),
+                        onPressed: () => AudioManager.instance.audioPlayer.seek(Duration.zero),
+                      );
+                    }
+                  },
+                ),
+                
+                // Tombol Stop / Tutup Player
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white70),
+                  onPressed: () async {
+                    await AudioManager.instance.stopAudio();
+                    setState(() {
+                      _playingAyahNumber = null; // Menyembunyikan Mini Player
+                    });
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -207,30 +309,26 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.play_circle_outline, color: Color(0xFF088395)),
+                    // Ubah warna ikon jika ayat ini yang sedang diputar
+                    icon: Icon(
+                      _playingAyahNumber == ayat.nomorAyat ? Icons.volume_up : Icons.play_circle_outline, 
+                      color: _playingAyahNumber == ayat.nomorAyat ? const Color(0xFFD4AF37) : const Color(0xFF088395)
+                    ),
                     onPressed: () async {
-                      // Menampilkan pesan bahwa audio sedang diproses
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Memuat murottal...'),
-                          duration: Duration(milliseconds: 1000),
-                        ),
-                      );
-
+                      setState(() {
+                        _playingAyahNumber = ayat.nomorAyat;
+                      });
+                      
                       try {
-                        // Memanggil AudioManager
                         await AudioManager.instance.playAyahAudio(
                           widget.surahId, 
-                          ayat.nomorAyat
+                          ayat.nomorAyat,
+                          loopMode: _currentLoopMode,
                         );
                       } catch (e) {
-                        // Tampilkan error jika gagal download/putar
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Gagal memutar audio. Cek koneksi internet Anda.'),
-                              backgroundColor: Colors.red,
-                            ),
+                            const SnackBar(content: Text('Gagal memutar audio.'), backgroundColor: Colors.red),
                           );
                         }
                       }
