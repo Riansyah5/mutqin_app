@@ -1,0 +1,40 @@
+[
+  {
+    "id": 1,
+    "nama_latin": "Al-Fatihah",
+    "nama_arab": "الفاتحة",
+    "jumlah_ayat": 7,
+    "tempat_turun": "Makkah",
+    "ayat": [
+      {
+        "nomor_ayat": 1,
+        "teks_arab": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+        "terjemahan": "Dengan nama Allah Yang Maha Pengasih, Maha Penyayang."
+      },
+      {
+        "nomor_ayat": 2,
+        "teks_arab": "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ",
+        "terjemahan": "Segala puji bagi Allah, Tuhan seluruh alam."
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "nama_latin": "Al-Baqarah",
+    "nama_arab": "البقرة",
+    "jumlah_ayat": 286,
+    "tempat_turun": "Madinah",
+    "ayat": [
+      {
+        "nomor_ayat": 1,
+        "teks_arab": "الم",
+        "terjemahan": "Alif Lam Mim."
+      },
+      {
+        "nomor_ayat": 2,
+        "teks_arab": "ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِلْمُتَّقِينَ",
+        "terjemahan": "Kitab (Al-Qur'an) ini tidak ada keraguan padanya; petunjuk bagi mereka yang bertakwa."
+      }
+    ]
+  }
+]
