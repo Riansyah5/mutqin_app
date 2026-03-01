@@ -26,7 +26,7 @@ class MutqinApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFFDFDFD), // Clean White
-        fontFamily: 'Poppins',
+        fontFamily: 'Quicksand-SemiBold', // Font utama yang bersih dan modern
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF12372A), // Aesthetic Forest Green
           primary: const Color(0xFF12372A),
