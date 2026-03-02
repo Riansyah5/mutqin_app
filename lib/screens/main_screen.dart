@@ -3,6 +3,7 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'home_screen.dart';
 import 'quiz_screen.dart'; // Placeholder untuk halaman Hafalan
+import 'bookmark_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const QuizScreen(),  // Placeholder untuk halaman Hafalan, Markah, dan Profil
-    const Center(child: Text('Halaman Markah', style: TextStyle(fontFamily: 'Poppins'))),  // Placeholder
+    const BookmarkScreen(),  // Placeholder untuk halaman Markah
     const Center(child: Text('Halaman Profil', style: TextStyle(fontFamily: 'Poppins'))),   // Placeholder
   ];
 

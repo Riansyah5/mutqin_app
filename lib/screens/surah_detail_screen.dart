@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import '../database/database_helper.dart';
 import '../models/ayah_model.dart';
-import '../services/audio_manager.dart'; //
+import '../services/audio_manager.dart';
 
 class SurahDetailScreen extends StatefulWidget {
   final int surahId;
@@ -21,323 +21,177 @@ class SurahDetailScreen extends StatefulWidget {
 }
 
 class _SurahDetailScreenState extends State<SurahDetailScreen> {
-  late Future<List<Ayah>> _ayahsFuture;
+  // 1. Ganti Future dengan List biasa agar UI bisa di-update secara instan
+  List<Ayah> _ayahs = [];
+  bool _isLoading = true;
   
-  int? _playingAyahNumber; // Menyimpan nomor ayat yang sedang diputar
-  LoopMode _currentLoopMode = LoopMode.off; // Menyimpan status looping saat ini
-
+  // State untuk Audio Player
+  int? _playingAyahNumber;
+  LoopMode _currentLoopMode = LoopMode.off;
 
   @override
   void initState() {
     super.initState();
-    _loadAyahs(); // Memuat data ayat saat layar pertama kali dibuka
+    _loadAyahsData();
   }
 
-  // Fungsi untuk mengambil data dari SQLite
-  void _loadAyahs() {
-    _ayahsFuture = DatabaseHelper.instance.getAyahsBySurah(widget.surahId);
-  }
-
-  // Fungsi untuk mengubah status hafalan (0: Belum, 1: Proses, 2: Lancar)
-  Future<void> _toggleHafalanStatus(Ayah ayat) async {
-    int nextStatus = (ayat.statusHafalan + 1) % 3; // Siklus: 0 -> 1 -> 2 -> 0
-    await DatabaseHelper.instance.updateStatusHafalan(ayat.id, nextStatus);
-    
-    // Perbarui UI setelah data di database berubah
+  // Muat data sekali saat layar dibuka
+  Future<void> _loadAyahsData() async {
+    final data = await DatabaseHelper.instance.getAyahsBySurah(widget.surahId);
     setState(() {
-      _loadAyahs();
+      _ayahs = data;
+      _isLoading = false;
     });
+  }
+
+  // Fungsi Update Markah secara Instan
+  Future<void> _toggleBookmarkStatus(int index) async {
+    final ayat = _ayahs[index];
+    int nextStatus = ayat.isBookmarked == 1 ? 0 : 1;
     
-    // Tampilkan pesan kecil (Snackbar)
-    if (!mounted) return;
-    String pesan = nextStatus == 2 ? 'Alhamdulillah, ayat ditandai Lancar' 
-                 : nextStatus == 1 ? 'Ayat ditandai Sedang Dihafal' 
-                 : 'Tanda hafalan dihapus';
-                 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(pesan),
-        duration: const Duration(seconds: 1),
-        backgroundColor: nextStatus == 2 ? Colors.green : const Color(0xFF088395),
-      ),
-    );
+    // Update ke UI langsung (Instan)
+    setState(() {
+      _ayahs[index] = Ayah(
+        id: ayat.id, surahId: ayat.surahId, nomorAyat: ayat.nomorAyat,
+        juz: ayat.juz, teksArab: ayat.teksArab, teksLatin: ayat.teksLatin,
+        terjemahan: ayat.terjemahan, statusHafalan: ayat.statusHafalan,
+        isBookmarked: nextStatus, // Nilai baru
+      );
+    });
+
+    // Simpan ke SQLite di latar belakang
+    await DatabaseHelper.instance.toggleBookmark(ayat.id, nextStatus, nextStatus == 1 ? 1 : 0); // Update status bookmark di database
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(nextStatus == 1 ? 'Ayat ditambahkan ke Markah' : 'Markah dihapus'),
+        duration: const Duration(milliseconds: 1000),
+        backgroundColor: nextStatus == 1 ? const Color(0xFFC5A880) : const Color(0xFF12372A),
+      ));
+    }
+  }
+
+  // Fungsi Update Hafalan secara Instan
+  Future<void> _toggleHafalanStatus(int index) async {
+    final ayat = _ayahs[index];
+    int nextStatus = (ayat.statusHafalan + 1) % 3;
+    
+    // Update ke UI langsung
+    setState(() {
+      _ayahs[index] = Ayah(
+        id: ayat.id, surahId: ayat.surahId, nomorAyat: ayat.nomorAyat,
+        juz: ayat.juz, teksArab: ayat.teksArab, teksLatin: ayat.teksLatin,
+        terjemahan: ayat.terjemahan, statusHafalan: nextStatus, // Nilai baru
+        isBookmarked: ayat.isBookmarked, 
+      );
+    });
+
+    // Simpan ke SQLite
+    await DatabaseHelper.instance.updateStatusHafalan(ayat.id, nextStatus);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFDFDFD),
       appBar: AppBar(
-        title: Text(widget.surahName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0A4D68))),
+        title: Text(widget.surahName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF12372A))),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: Column(
-        children: [
-          _buildSurahHeader(),
-          Expanded(child: _buildAyatList()),
-        ],
-      ),
-      // MUNCULKAN MINI PLAYER JIKA ADA AYAT YANG DIPUTAR
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF12372A)))
+          : Column(
+              children: [
+                _buildSurahHeader(),
+                Expanded(child: _buildAyatList()),
+              ],
+            ),
       bottomNavigationBar: _playingAyahNumber != null ? _buildMiniAudioPlayer() : null,
     );
   }
 
-  // --- WIDGET MINI PLAYER ---
-  Widget _buildMiniAudioPlayer() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A4D68), // Warna Navy premium
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, -5)),
-        ],
-      ),
-      child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Info Ayat yang diputar
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Sedang diputar',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                Text(
-                  '${widget.surahName} - Ayat $_playingAyahNumber',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ],
-            ),
-            
-            // Kontrol Audio (Loop, Play/Pause, Stop)
-            Row(
-              children: [
-                // Tombol Looping
-                IconButton(
-                  icon: Icon(
-                    _currentLoopMode == LoopMode.one ? Icons.repeat_one : Icons.repeat,
-                    color: _currentLoopMode == LoopMode.one ? const Color(0xFFD4AF37) : Colors.white70,
-                  ),
-                  onPressed: () async {
-                    // Toggle looping mode
-                    setState(() {
-                      _currentLoopMode = _currentLoopMode == LoopMode.off ? LoopMode.one : LoopMode.off;
-                    });
-                    await AudioManager.instance.audioPlayer.setLoopMode(_currentLoopMode);
-                    
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(_currentLoopMode == LoopMode.one ? 'Pengulangan Ayat Diaktifkan' : 'Pengulangan Dimatikan'),
-                        duration: const Duration(milliseconds: 1000),
-                      ));
-                    }
-                  },
-                ),
-                
-                // StreamBuilder untuk tombol Play/Pause dinamis
-                StreamBuilder<PlayerState>(
-                  stream: AudioManager.instance.audioPlayer.playerStateStream,
-                  builder: (context, snapshot) {
-                    final playerState = snapshot.data;
-                    final processingState = playerState?.processingState;
-                    final playing = playerState?.playing;
-
-                    if (processingState == ProcessingState.loading || processingState == ProcessingState.buffering) {
-                      return const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Color(0xFFD4AF37), strokeWidth: 3)),
-                      );
-                    } else if (playing != true) {
-                      return IconButton(
-                        icon: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
-                        onPressed: AudioManager.instance.resumeAudio,
-                      );
-                    } else if (processingState != ProcessingState.completed) {
-                      return IconButton(
-                        icon: const Icon(Icons.pause, color: Colors.white, size: 32),
-                        onPressed: AudioManager.instance.pauseAudio,
-                      );
-                    } else {
-                      // Jika selesai (dan tidak di-loop), kembalikan ke ikon play
-                      return IconButton(
-                        icon: const Icon(Icons.replay, color: Colors.white, size: 32),
-                        onPressed: () => AudioManager.instance.audioPlayer.seek(Duration.zero),
-                      );
-                    }
-                  },
-                ),
-                
-                // Tombol Stop / Tutup Player
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white70),
-                  onPressed: () async {
-                    await AudioManager.instance.stopAudio();
-                    setState(() {
-                      _playingAyahNumber = null; // Menyembunyikan Mini Player
-                    });
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Header Surah (Bismillah)
   Widget _buildSurahHeader() {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0A4D68), Color(0xFF088395)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: const LinearGradient(colors: [Color(0xFF12372A), Color(0xFF1A4D3E)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF088395).withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: const Color(0xFF12372A).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: Column(
         children: [
-          Text(
-            widget.surahArab, // Diambil dari database
-            style: const TextStyle(
-              fontFamily: 'KFGQPC',
-              fontSize: 32,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Bismillah hanya tampil jika bukan Surah At-Taubah (ID 9)
+          Text(widget.surahArab, style: const TextStyle(fontFamily: 'Amiri', fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold)),
           if (widget.surahId != 9) ...[
+            const SizedBox(height: 8),
             const Divider(color: Colors.white24, thickness: 1, height: 30),
-            const Text(
-              'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
-              style: TextStyle(
-                fontFamily: 'KFGQPC',
-                fontSize: 28,
-                color: Colors.white,
-              ),
-            ),
+            const Text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', style: TextStyle(fontFamily: 'Amiri', fontSize: 28, color: Colors.white)),
           ]
         ],
       ),
     );
   }
 
-  // Daftar Ayat menggunakan FutureBuilder
   Widget _buildAyatList() {
-    return FutureBuilder<List<Ayah>>(
-      future: _ayahsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF0A4D68)));
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('Ayat tidak ditemukan.'));
-        }
-
-        final List<Ayah> ayahs = snapshot.data!;
-
-        return ListView.separated(
-          padding: const EdgeInsets.only(bottom: 20),
-          itemCount: ayahs.length,
-          separatorBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(color: Colors.grey.withOpacity(0.2)),
-          ),
-          itemBuilder: (context, index) {
-            return _buildAyatItem(ayahs[index]);
-          },
-        );
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 20),
+      itemCount: _ayahs.length,
+      separatorBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Divider(color: Colors.grey.withOpacity(0.2)),
+      ),
+      itemBuilder: (context, index) {
+        return _buildAyatItem(index, _ayahs[index]);
       },
     );
   }
 
-  // UI per Ayat
-  Widget _buildAyatItem(Ayah ayat) {
-    // Menentukan warna dan ikon berdasarkan status hafalan
-    Color statusColor;
-    IconData statusIcon;
-    
-    if (ayat.statusHafalan == 2) {
-      statusColor = Colors.green; // Mutqin / Lancar
-      statusIcon = Icons.check_circle;
-    } else if (ayat.statusHafalan == 1) {
-      statusColor = const Color(0xFFD4AF37); // Gold - Proses Menghafal
-      statusIcon = Icons.timelapse;
-    } else {
-      statusColor = Colors.grey; // Belum dihafal
-      statusIcon = Icons.check_circle_outline;
-    }
+  Widget _buildAyatItem(int index, Ayah ayat) {
+    // Menentukan warna hafalan
+    Color statusColor = ayat.statusHafalan == 2 ? Colors.green : (ayat.statusHafalan == 1 ? const Color(0xFFC5A880) : Colors.grey);
+    IconData statusIcon = ayat.statusHafalan == 2 ? Icons.check_circle : (ayat.statusHafalan == 1 ? Icons.timelapse : Icons.check_circle_outline);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Baris Aksi (Nomor Ayat & Tombol Interaksi)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 35,
-                height: 35,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F4F8),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: Text(
-                    ayat.nomorAyat.toString(),
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0A4D68)),
-                  ),
-                ),
+                width: 35, height: 35,
+                decoration: BoxDecoration(color: const Color(0xFFF0F4F8), borderRadius: BorderRadius.circular(20)),
+                child: Center(child: Text(ayat.nomorAyat.toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF12372A)))),
               ),
               Row(
                 children: [
                   IconButton(
-                    // Ubah warna ikon jika ayat ini yang sedang diputar
-                    icon: Icon(
-                      _playingAyahNumber == ayat.nomorAyat ? Icons.volume_up : Icons.play_circle_outline, 
-                      color: _playingAyahNumber == ayat.nomorAyat ? const Color(0xFFD4AF37) : const Color(0xFF088395)
-                    ),
+                    icon: Icon(_playingAyahNumber == ayat.nomorAyat ? Icons.volume_up : Icons.play_circle_outline, 
+                    color: _playingAyahNumber == ayat.nomorAyat ? const Color(0xFFC5A880) : const Color(0xFF1A4D3E)),
                     onPressed: () async {
-                      setState(() {
-                        _playingAyahNumber = ayat.nomorAyat;
-                      });
-                      
+                      setState(() { _playingAyahNumber = ayat.nomorAyat; });
                       try {
-                        await AudioManager.instance.playAyahAudio(
-                          widget.surahId, 
-                          ayat.nomorAyat,
-                          loopMode: _currentLoopMode,
-                        );
+                        await AudioManager.instance.playAyahAudio(widget.surahId, ayat.nomorAyat, loopMode: _currentLoopMode);
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Gagal memutar audio.'), backgroundColor: Colors.red),
-                          );
-                        }
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal memutar audio.'), backgroundColor: Colors.red));
                       }
                     },
                   ),
+                  // TOMBOL MARKAH YANG SUDAH INSTAN
+                  IconButton(
+                    icon: Icon(
+                      ayat.isBookmarked == 1 ? Icons.bookmark : Icons.bookmark_border, 
+                      color: ayat.isBookmarked == 1 ? const Color(0xFFC5A880) : const Color(0xFF1A4D3E), // Gold jika ditandai
+                      size: 26,
+                    ),
+                    onPressed: () => _toggleBookmarkStatus(index),
+                  ),
                   IconButton(
                     icon: Icon(statusIcon, color: statusColor),
-                    onPressed: () => _toggleHafalanStatus(ayat),
-                    tooltip: 'Tandai Hafalan',
+                    onPressed: () => _toggleHafalanStatus(index),
                   ),
                 ],
               ),
@@ -345,30 +199,82 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
           ),
           const SizedBox(height: 12),
           
-          // Teks Arab
           Text(
             ayat.teksArab,
             textAlign: TextAlign.right,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              fontFamily: 'KFGQPC',
-              fontSize: 28,
-              height: 1.8,
-              color: Color(0xFF2D2D2D),
-            ),
+            style: const TextStyle(fontFamily: 'Amiri', fontSize: 28, height: 1.8, color: Color(0xFF2D2D2D)),
           ),
           const SizedBox(height: 16),
           
-          // Teks Terjemahan
+          // TEKS LATIN (BARU DITAMBAHKAN)
+          Text(
+            ayat.teksLatin,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF1A4D3E), fontStyle: FontStyle.italic, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 8),
+
           Text(
             ayat.terjemahan,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF5A5A5A),
-              height: 1.5,
-            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF5A5A5A), height: 1.5),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMiniAudioPlayer() {
+    // ... (Kode Mini Audio Player tetap sama persis seperti sebelumnya)
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(color: const Color(0xFF12372A), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, -5))]),
+      child: SafeArea(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Sedang diputar', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                Text('${widget.surahName} - Ayat $_playingAyahNumber', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(_currentLoopMode == LoopMode.one ? Icons.repeat_one : Icons.repeat, color: _currentLoopMode == LoopMode.one ? const Color(0xFFC5A880) : Colors.white70),
+                  onPressed: () async {
+                    setState(() { _currentLoopMode = _currentLoopMode == LoopMode.off ? LoopMode.one : LoopMode.off; });
+                    await AudioManager.instance.audioPlayer.setLoopMode(_currentLoopMode);
+                  },
+                ),
+                StreamBuilder<PlayerState>(
+                  stream: AudioManager.instance.audioPlayer.playerStateStream,
+                  builder: (context, snapshot) {
+                    final state = snapshot.data;
+                    if (state?.processingState == ProcessingState.loading || state?.processingState == ProcessingState.buffering) {
+                      return const Padding(padding: EdgeInsets.all(8.0), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Color(0xFFC5A880), strokeWidth: 3)));
+                    } else if (state?.playing != true) {
+                      return IconButton(icon: const Icon(Icons.play_arrow, color: Colors.white, size: 32), onPressed: AudioManager.instance.resumeAudio);
+                    } else if (state?.processingState != ProcessingState.completed) {
+                      return IconButton(icon: const Icon(Icons.pause, color: Colors.white, size: 32), onPressed: AudioManager.instance.pauseAudio);
+                    } else {
+                      return IconButton(icon: const Icon(Icons.replay, color: Colors.white, size: 32), onPressed: () => AudioManager.instance.audioPlayer.seek(Duration.zero));
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white70),
+                  onPressed: () async {
+                    await AudioManager.instance.stopAudio();
+                    setState(() { _playingAyahNumber = null; });
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

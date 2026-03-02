@@ -53,6 +53,7 @@ class DatabaseHelper {
         teks_latin TEXT,
         terjemahan TEXT NOT NULL,
         status_hafalan INTEGER DEFAULT 0,
+        is_bookmarked INTEGER DEFAULT 0,
         FOREIGN KEY (surah_id) REFERENCES surah (id) ON DELETE CASCADE
       )
     ''');
@@ -187,6 +188,31 @@ class DatabaseHelper {
     };
   }
 
+  // --- FUNGSI MARKAH (BOOKMARK) ---
+
+  // Mengubah status bookmark (0 ke 1, atau 1 ke 0)
+  Future<int> toggleBookmark(int ayahId, int isBookmarked, int nextStatus) async {
+    final db = await instance.database;
+    return await db.update(
+      'ayah',
+      {'is_bookmarked': isBookmarked},
+      where: 'id = ?',
+      whereArgs: [ayahId],
+    );
+  }
+
+  // Mengambil semua ayat yang di-bookmark
+  Future<List<Map<String, dynamic>>> getBookmarkedAyahs() async {
+    final db = await instance.database;
+    return await db.rawQuery('''
+      SELECT a.*, s.nama_latin as nama_surah 
+      FROM ayah a 
+      JOIN surah s ON a.surah_id = s.id 
+      WHERE a.is_bookmarked = 1 
+      ORDER BY s.id ASC, a.nomor_ayat ASC
+    ''');
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();
@@ -254,5 +280,5 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
     print("Seeding database dari 114 file berhasil!");
   }
-  
+
 }

@@ -7,6 +7,7 @@ class Ayah {
   final String teksLatin;
   final String terjemahan;
   final int statusHafalan;
+  final int isBookmarked;
 
   Ayah({
     required this.id,
@@ -17,6 +18,7 @@ class Ayah {
     required this.teksLatin,
     required this.terjemahan,
     this.statusHafalan = 0,
+    this.isBookmarked = 0,
   });
 
   factory Ayah.fromMap(Map<String, dynamic> map) {
@@ -42,6 +44,7 @@ class Ayah {
       'teks_latin': teksLatin,
       'terjemahan': terjemahan,
       'status_hafalan': statusHafalan,
+      'is_bookmarked': isBookmarked,
     };
   }
 }
